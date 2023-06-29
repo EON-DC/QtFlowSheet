@@ -71,6 +71,24 @@ class DBConnector:
         c = self.start_conn()
         patient_data = c.execute("select * from patients where register_id = (?)", (register_id,)).fetchone()
         patient_obj = Patient(*patient_data)
+        print(patient_obj.patient_id)
+        flowsheet_list = list()
+        fetched_timeline_vital_id = c.execute("""
+        select t.time_line_information, f.vital_id from flowsheet f inner join timeline t
+            on f.timeline_id = t.id where f.patient_id=(?)""",
+                                              (patient_obj.patient_id,)).fetchall()
+        vital_list = list()
+
+        for row in fetched_timeline_vital_id:
+            vital_list.append(
+                c.execute("""select bt, hr, rr, sbp, dbp, mbp from vital where id = (?)""", (row[1],)).fetchone())
+
+        for i in range(len(fetched_timeline_vital_id)):
+            timeline_info = fetched_timeline_vital_id[i][0]
+            bt, hr, rr, sbp, dbp, mbp = vital_list[i]
+            flowsheet_list.append((timeline_info, bt, hr, rr, sbp, dbp, mbp))
+
+        patient_obj.set_flowsheet_list(flowsheet_list)
         self.end_conn()
         return patient_obj
 
@@ -124,6 +142,13 @@ class DBConnector:
         return result_list
 
     ## Flowsheet ======================================================================= ##
+
+    def clear_flowsheet_table(self):
+        c = self.start_conn()
+        c.execute("delete from flowsheet")
+        self.commit_db()
+        self.end_conn()
+
     def insert_dummy_flowsheet(self):
         c = self.start_conn()
 
@@ -140,10 +165,9 @@ class DBConnector:
 
             for i in range(hospital_hours):
                 vital_id = fetched_vital_list[offset]
-                timeline_id += i
                 offset += 1
                 c.execute("insert into flowsheet(patient_id, timeline_id, vital_id) values (?, ?, ?)",
-                          (patient_id, timeline_id, vital_id,))
+                          (patient_id, timeline_id + i, vital_id,))
                 # print((patient_id, timeline_id, vital_id,))
 
         self.commit_db()
@@ -228,8 +252,10 @@ if __name__ == '__main__':
     # connector.clear_vital_table()
 
     # connector.insert_dummy_flowsheet()
+    # connector.clear_flowsheet_table()
 
-    # obj = connector.get_patient_by_register_id("048813")
+    obj = connector.get_patient_by_register_id("250496")
+    print(obj)
     # connector.insert_dummy_employees()
     # connector.clear_patients_table()
     # connector.insert_dummy_patient()

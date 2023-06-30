@@ -1,4 +1,7 @@
 class Vital:
+
+    vital_column_name_list = ['bt', 'hr', 'rr', 'sbp', 'dbp', 'mbp']
+
     def __init__(self, vital_id, bt, hr, rr, sbp, dbp, mbp):
         self.vital_id = vital_id
         self.body_temperature = bt
@@ -12,5 +15,5 @@ class Vital:
         return f"{self.__repr__()}"
 
     def __repr__(self):
-        return self.__dict__
+        return f"{self.__dict__}"
 

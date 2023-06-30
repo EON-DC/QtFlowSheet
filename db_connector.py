@@ -6,7 +6,10 @@ import numpy as np
 from faker import Faker
 
 from class_employee import Employee
+from class_flowsheet import FlowSheet
 from class_patient import Patient
+from class_time_line import TimeLine
+from class_vital import Vital
 
 
 class DBConnector:
@@ -71,22 +74,38 @@ class DBConnector:
         c = self.start_conn()
         patient_data = c.execute("select * from patients where register_id = (?)", (register_id,)).fetchone()
         patient_obj = Patient(*patient_data)
-        print(patient_obj.patient_id)
         flowsheet_list = list()
         fetched_timeline_vital_id = c.execute("""
-        select t.time_line_information, f.vital_id from flowsheet f inner join timeline t
-            on f.timeline_id = t.id where f.patient_id=(?)""",
+        select t.id, t.time_line_information, f.vital_id, bt, hr, rr, sbp, dbp, mbp,f.id from flowsheet f inner join timeline t, vital v
+            on f.timeline_id = t.id and f.vital_id == v.id  where f.patient_id=(?)""",
                                               (patient_obj.patient_id,)).fetchall()
-        vital_list = list()
+        for element in fetched_timeline_vital_id:
+            timeline_id = element[0]
+            time_line_information = element[1]
+            vital_id = element[2]
+            bt = element[3]
+            hr = element[4]
+            rr = element[5]
+            sbp = element[6]
+            dbp = element[7]
+            mbp = element[8]
+            flowsheet_id = element[9]
+            timeline_obj = TimeLine(timeline_id, time_line_information)
+            vital_obj = Vital(vital_id, bt, hr, rr, sbp, dbp, mbp)
+            flowsheet_obj = FlowSheet(flowsheet_id, patient_obj, timeline_obj,vital_obj)
+            flowsheet_list.append(flowsheet_obj)
 
-        for row in fetched_timeline_vital_id:
-            vital_list.append(
-                c.execute("""select bt, hr, rr, sbp, dbp, mbp from vital where id = (?)""", (row[1],)).fetchone())
+        # vital_list = list()
 
-        for i in range(len(fetched_timeline_vital_id)):
-            timeline_info = fetched_timeline_vital_id[i][0]
-            bt, hr, rr, sbp, dbp, mbp = vital_list[i]
-            flowsheet_list.append((timeline_info, bt, hr, rr, sbp, dbp, mbp))
+        # for row in fetched_timeline_vital_id:
+        #     vital_list.append(
+        #         c.execute("""select bt, hr, rr, sbp, dbp, mbp from vital where id = (?)""", (row[1],)).fetchone())
+        #
+        # for i in range(len(fetched_timeline_vital_id)):
+        #     timeline_info = fetched_timeline_vital_id[i][0]
+        #     date_time = datetime.datetime.strptime(timeline_info, '%Y-%m-%d %H:%M')
+        #     bt, hr, rr, sbp, dbp, mbp = vital_list[i]
+        #     flowsheet_list.append((date_time, bt, hr, rr, sbp, dbp, mbp))
 
         patient_obj.set_flowsheet_list(flowsheet_list)
         self.end_conn()
@@ -143,6 +162,20 @@ class DBConnector:
 
     ## Flowsheet ======================================================================= ##
 
+    def add_flowsheet(self, patient_id, time_line_id, vital_id):
+        c = self.start_conn()
+        c.execute("insert into flowsheet(patient_id, timeline_id, vital_id) values (?, ?, ?)",
+                  (patient_id, time_line_id, vital_id,))
+        self.commit_db()
+        f_id = c.execute("select id from flowsheet order by id desc limit 1").fetchone()[0]
+        self.end_conn()
+        return self.find_flowsheet(f_id)
+
+    def find_flowsheet(self, f_id):
+        c = self.start_conn()
+        flowsheet_info = c.execute("select id from flowsheet order by id=(?)", (f_id,)).fetchone()
+        flowsheet = FlowSheet(*flowsheet_info)
+        return flowsheet
     def clear_flowsheet_table(self):
         c = self.start_conn()
         c.execute("delete from flowsheet")
@@ -174,6 +207,13 @@ class DBConnector:
         self.end_conn()
 
     ## TimeLine ======================================================================= ##
+
+    def find_date_obj_as_strf(self, strf_date_time):
+        c = self.start_conn()
+        result = c.execute("""select * from timeline where time_line_information = (?)""", (strf_date_time, )).fetchone()
+        timeline_obj = TimeLine(*result)
+        self.end_conn()
+        return timeline_obj
 
     def clear_time_line_table(self):
         c = self.start_conn()
@@ -253,7 +293,6 @@ if __name__ == '__main__':
 
     # connector.insert_dummy_flowsheet()
     # connector.clear_flowsheet_table()
-
     obj = connector.get_patient_by_register_id("250496")
     print(obj)
     # connector.insert_dummy_employees()

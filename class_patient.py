@@ -34,6 +34,7 @@ class Patient:
             return None
         else:
             return self.flowSheet_list[same_index]
+
     def update_flowsheet(self, flowsheet):
         has_same_flowsheet = False
         same_flowsheet_index = -1
@@ -47,6 +48,7 @@ class Patient:
             self.flowSheet_list.insert(same_flowsheet_index, flowsheet)
         else:
             self.flowSheet_list.append(flowsheet)
+
     def find_flowsheet_by_datetime(self, datetime_str):
         flowsheet_idx = -1
         for idx, flowsheet in enumerate(self.flowSheet_list):
@@ -58,8 +60,6 @@ class Patient:
         else:
             return self.flowSheet_list[flowsheet_idx]
 
-
     @staticmethod
     def set_date_time(birth_date_str):
         return datetime.datetime.strptime(birth_date_str, '%Y-%m-%d')
-

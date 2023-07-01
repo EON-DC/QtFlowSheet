@@ -16,8 +16,3 @@ class LoginController:
             return True
         else:
             return False
-        # if login_id == 'qwer' and login_pw == '1234':
-        #     return True
-        # else:
-        #     return False
-        # return True

@@ -48,7 +48,7 @@ class PatientFinder(QtWidgets.QWidget, Ui_PatientFinder):
 
         self.table_widget_patient_list.setRowCount(len(patient_list))
         for idx, p in enumerate(patient_list):
-            self.table_widget_patient_list.setVerticalHeaderItem(idx, PatientTableWidgetItem(f"{idx+1}", p))
+            self.table_widget_patient_list.setVerticalHeaderItem(idx, PatientTableWidgetItem(f"{idx + 1}", p))
             self.table_widget_patient_list.setItem(idx, 0, QtWidgets.QTableWidgetItem(p.name))
             birth_day_str = p.birth_date.strftime('%Y년 %m월 %d일')  # 생년월일
             self.table_widget_patient_list.setItem(idx, 1, QtWidgets.QTableWidgetItem(birth_day_str))

@@ -33,6 +33,7 @@ class VitalController:
         v_id = c.execute(find_pstmt).fetchone()[0]
         flowsheet = self.conn.add_flowsheet(patient_obj.patient_id, time_line_id, v_id)
         return flowsheet
+
     def execute_query_list(self, queries):
         c = self.conn.start_conn()
         try:

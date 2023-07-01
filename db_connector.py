@@ -181,7 +181,7 @@ class DBConnector:
 
     def find_employee_by_login_id(self, login_id):
         c = self.start_conn()
-        fetched_employee_info = c.execute("""select * from employees where login_id = (?)""", (login_id, )).fetchone()
+        fetched_employee_info = c.execute("""select * from employees where login_id = (?)""", (login_id,)).fetchone()
         if fetched_employee_info is None:
             return None
         employee = Employee(*fetched_employee_info)

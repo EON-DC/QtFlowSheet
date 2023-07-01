@@ -18,6 +18,8 @@ class LoginWidget(QtWidgets.QWidget, Ui_UILoginWidget):
 
         # 버튼 기능
         self.btn_login.clicked.connect(lambda state: self.login_button_clicked())
+        # 엔터 칠시
+        self.le_pw.returnPressed.connect(lambda: self.login_button_clicked())
 
     def login_button_clicked(self):
         login_id = self.le_login.text()

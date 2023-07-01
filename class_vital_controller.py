@@ -11,12 +11,12 @@ class VitalController:
     def get_connect(self):
         return self.conn
 
+    def fine_all_patients(self):
+        return self.conn.findAll_patients()
+
     def find_patient(self, register_id):
         register_id: str
-        if register_id != '':
-            return self.conn.get_patient_by_register_id(register_id)
-        else:
-            return self.conn.get_patient_by_register_id("250496")
+        return self.conn.find_patient_by_register_id(register_id)
 
     def find_date(self, datetime_obj):
         assert isinstance(datetime_obj, datetime)

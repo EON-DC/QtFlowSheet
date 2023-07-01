@@ -3,6 +3,7 @@ import datetime
 from PyQt5 import QtCore, QtGui, QtWidgets
 
 from class_patient import Patient
+from class_patient_finder_widget import PatientFinder
 from class_vital import Vital
 from class_vital_controller import VitalController
 from ui_vital_widget import Ui_UIVitalWidget
@@ -18,6 +19,7 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
         self.initialize_trigger()
         self.patient_obj = None
         self.query_list = list()
+        self.patient_finder_widget = PatientFinder(self, self.controller)
 
     def initialize_label(self):
         self.label_name.setText('')
@@ -44,6 +46,8 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
             return
 
         for i in range(self.vital_table.columnCount() - 1, 0, -1):
+            if self.vital_table.item(0, i) is None:
+                continue
             if self.vital_table.item(0, i).text() != '':
                 if i + 3 < self.vital_table.columnCount():
                     end_index = i + 3
@@ -58,7 +62,9 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
         self.query_list.clear()
 
     def add_change_query(self, row, col):
-        if self.vital_table.item(row, col).text().isdigit() is False:
+
+        changed_text = self.vital_table.item(row, col).text()
+        if changed_text.isdigit() is False and changed_text != '':
             self.vital_table.cellChanged.disconnect()
             self.vital_table.item(row, col).setText('')
             self.vital_table.cellChanged.connect(lambda row, col: self.add_change_query(row, col))
@@ -74,9 +80,15 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
                 break
         if has_same_item is True:
             self.query_list.pop(same_item_index)
-            self.query_list.insert(same_item_index, (row, col, int(self.vital_table.item(row, col).text())))
+            if changed_text == '':
+                self.query_list.insert(same_item_index, (row, col, 9999))
+            else:
+                self.query_list.insert(same_item_index, (row, col, int(changed_text)))
         else:
-            self.query_list.append((row, col, int(self.vital_table.item(row, col).text())))
+            if changed_text == '':
+                self.query_list.insert(same_item_index, (row, col, 9999))
+            else:
+                self.query_list.append((row, col, int(changed_text)))
 
     def convert_query_list(self):
         result_list = list()
@@ -87,28 +99,27 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
             col_head_text = self.vital_table.horizontalHeaderItem(col).text()
             find_flowsheet = self.patient_obj.find_flowsheet_by_datetime(col_head_text)
             row_name = Vital.vital_column_name_list[row]
+
             if find_flowsheet is not None:
-                print('found!')
                 v_id = find_flowsheet.vital.vital_id
             else:
-                print("cannot found")
-                print(type(self.vital_table.item(row, col)))
-                t_id = self.vital_table.item(row, col).time_line.time_line_id
+                t_id = self.vital_table.horizontalHeaderItem(col).time_line.time_line_id
                 flowsheet = self.controller.create_flowsheet(self.patient_obj, row_name, changed_value, t_id)
                 v_id = flowsheet.vital.vital_id
                 self.patient_obj.update_flowsheet(flowsheet)
+
             pstmt = f"update vital set {row_name} = {changed_value} where id = {v_id}"
             result_list.append(pstmt)
         return result_list
 
     def btn_save_clicked(self):
         converted_query_list = self.convert_query_list()
-        for i in converted_query_list:
-            print(i)
         self.controller.execute_query_list(converted_query_list)
         self.btn_fetch.click()
 
     def btn_restore_clicked(self):
+        if len(self.le_register_id.text()) == 0:
+            return
         self.btn_fetch.click()
 
     def close(self):
@@ -130,7 +141,7 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
         register_id: str
         patient = self.controller.find_patient(register_id)
         if patient is None:
-            return
+            self.patient_finder_widget.show()
         else:
             self.patient_obj = patient
             self.refresh_patient_information()
@@ -198,38 +209,14 @@ class VitalWidget(QtWidgets.QWidget, Ui_UIVitalWidget):
                 self.set_table_cell_info(dbp, 4, col_idx, time_line_obj, Vital.vital_column_name_list[4])
                 self.set_table_cell_info(mbp, 5, col_idx, time_line_obj, Vital.vital_column_name_list[5])
 
-        # for idx, flowsheet in enumerate(patient.flowSheet_list):
-        #     col_idx = idx + start_index
-        #     bt_str = str(flowsheet.vital.body_temperature)
-        #     bt = f"{bt_str[:2]}.{bt_str[2:]}"
-        #     hr = str(flowsheet.vital.heart_rate)
-        #     rr = str(flowsheet.vital.respiration_rate)
-        #     sbp = str(flowsheet.vital.systolic_blood_pressure)
-        #     dbp = str(flowsheet.vital.diastolic_blood_pressure)
-        #     mbp = str(flowsheet.vital.mean_blood_pressure)
-        #     time_line_obj = flowsheet.time_line
-        #
-        #     self.set_table_cell_info(bt, 0, col_idx, time_line_obj)
-        #     self.set_table_cell_info(hr, 1, col_idx,time_line_obj)
-        #     self.set_table_cell_info(rr, 2, col_idx,time_line_obj)
-        #     self.set_table_cell_info(sbp, 3, col_idx,time_line_obj)
-        #     self.set_table_cell_info(dbp, 4, col_idx,time_line_obj)
-        #     self.set_table_cell_info(mbp, 5, col_idx,time_line_obj)
-
-        for row_index in range(self.vital_table.rowCount()):
-            for col_index in range(self.vital_table.columnCount()):
-                if self.vital_table.item(row_index, col_index) is None:
-                    col_time_line_obj = self.vital_table.horizontalHeaderItem(col_idx).time_line
-                    category = Vital.vital_column_name_list[row_index]
-                    self.vital_table.setItem(row_index, col_index,
-                                             CustomQTableWidgetItem('', col_time_line_obj, category))
-
         self.resize_column_width_and_auto_scroll_move()
         self.vital_table.cellChanged.connect(lambda row, col: self.add_change_query(row, col))
 
         self.query_list.clear()
 
     def set_table_cell_info(self, text, row, col, time_line_obj, category):
+        if text == "None" or text == "No.ne" or text == "9999":
+            text = ''
         cell = CustomQTableWidgetItem(text, time_line_obj, category)
         self.vital_table.setItem(row, col, cell)
 

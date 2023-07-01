@@ -45,6 +45,17 @@ class DBConnector:
 
     ## Patients ======================================================================= ##
 
+    def findAll_patients(self):
+        c = self.start_conn()
+
+        patients_list = list()
+        fetched_data = c.execute("select * from patients").fetchall()
+        for row in fetched_data:
+            patients_list.append(Patient(*row))
+
+        self.end_conn()
+        return patients_list
+
     def insert_dummy_patient(self):
         c = self.start_conn()
 
@@ -70,9 +81,17 @@ class DBConnector:
         self.commit_db()
         self.end_conn()
 
-    def get_patient_by_register_id(self, register_id):
+    def find_patient_by_id(self, p_id):
+        c = self.start_conn()
+        patient_data = c.execute("select * from patients where id = (?)", (p_id,)).fetchone()
+        patient_obj = Patient(*patient_data)
+        return patient_obj
+
+    def find_patient_by_register_id(self, register_id):
         c = self.start_conn()
         patient_data = c.execute("select * from patients where register_id = (?)", (register_id,)).fetchone()
+        if patient_data is None:
+            return None
         patient_obj = Patient(*patient_data)
         flowsheet_list = list()
         fetched_timeline_vital_id = c.execute("""
@@ -92,7 +111,7 @@ class DBConnector:
             flowsheet_id = element[9]
             timeline_obj = TimeLine(timeline_id, time_line_information)
             vital_obj = Vital(vital_id, bt, hr, rr, sbp, dbp, mbp)
-            flowsheet_obj = FlowSheet(flowsheet_id, patient_obj, timeline_obj,vital_obj)
+            flowsheet_obj = FlowSheet(flowsheet_id, patient_obj, timeline_obj, vital_obj)
             flowsheet_list.append(flowsheet_obj)
 
         # vital_list = list()
@@ -160,6 +179,15 @@ class DBConnector:
         self.end_conn()
         return result_list
 
+    def find_employee_by_login_id(self, login_id):
+        c = self.start_conn()
+        fetched_employee_info = c.execute("""select * from employees where login_id = (?)""", (login_id, )).fetchone()
+        if fetched_employee_info is None:
+            return None
+        employee = Employee(*fetched_employee_info)
+        self.end_conn()
+        return employee
+
     ## Flowsheet ======================================================================= ##
 
     def add_flowsheet(self, patient_id, time_line_id, vital_id):
@@ -173,9 +201,19 @@ class DBConnector:
 
     def find_flowsheet(self, f_id):
         c = self.start_conn()
-        flowsheet_info = c.execute("select id from flowsheet order by id=(?)", (f_id,)).fetchone()
-        flowsheet = FlowSheet(*flowsheet_info)
+        flowsheet_info = c.execute("select * from flowsheet order by id=(?)", (f_id,)).fetchone()
+        f_id = flowsheet_info[0]
+        patient_id = flowsheet_info[1]
+        time_line_id = flowsheet_info[2]
+        v_id = flowsheet_info[3]
+
+        patient_obj = self.find_patient_by_id(patient_id)
+        time_line_obj = self.find_time_line_by_id(time_line_id)
+        vital_obj = self.find_vital_by_id(v_id)
+        flowsheet = FlowSheet(f_id, patient_obj, time_line_obj, vital_obj)
+        self.end_conn()
         return flowsheet
+
     def clear_flowsheet_table(self):
         c = self.start_conn()
         c.execute("delete from flowsheet")
@@ -210,7 +248,14 @@ class DBConnector:
 
     def find_date_obj_as_strf(self, strf_date_time):
         c = self.start_conn()
-        result = c.execute("""select * from timeline where time_line_information = (?)""", (strf_date_time, )).fetchone()
+        result = c.execute("""select * from timeline where time_line_information = (?)""", (strf_date_time,)).fetchone()
+        timeline_obj = TimeLine(*result)
+        self.end_conn()
+        return timeline_obj
+
+    def find_time_line_by_id(self, t_id):
+        c = self.start_conn()
+        result = c.execute("""select * from timeline where id = (?)""", (t_id,)).fetchone()
         timeline_obj = TimeLine(*result)
         self.end_conn()
         return timeline_obj
@@ -234,6 +279,14 @@ class DBConnector:
         self.end_conn()
 
     ## Vital ======================================================================= ##
+
+    def find_vital_by_id(self, v_id):
+        c = self.start_conn()
+        result = c.execute("""select * from vital where id = (?)""", (v_id,)).fetchone()
+        vital_obj = Vital(*result)
+        self.end_conn()
+        return vital_obj
+
     def clear_vital_table(self):
         c = self.start_conn()
         c.execute("""delete from vital""")
@@ -283,6 +336,7 @@ class DBConnector:
 
 if __name__ == '__main__':
     connector = DBConnector(test_option=True)
+    connector.findAll_patients()
     # employees = connector.findAll_employees()
     # for e in employees:
     #     print(e)
@@ -293,8 +347,8 @@ if __name__ == '__main__':
 
     # connector.insert_dummy_flowsheet()
     # connector.clear_flowsheet_table()
-    obj = connector.get_patient_by_register_id("250496")
-    print(obj)
+    # obj = connector.find_patient_by_register_id("250496")
+    # print(obj)
     # connector.insert_dummy_employees()
     # connector.clear_patients_table()
     # connector.insert_dummy_patient()
